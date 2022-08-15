@@ -200,9 +200,11 @@ func (s *ClusterScope) NatRouterSpec() *compute.Router {
 // FirewallRulesSpec returns google compute firewall spec.
 func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 	firewallRules := []*compute.Firewall{
+		// Healthchecks
 		{
-			Name:    fmt.Sprintf("allow-%s-healthchecks", s.Name()),
-			Network: s.NetworkLink(),
+			Name:     fmt.Sprintf("%s-allow-healthchecks", s.Name()),
+			Network:  s.NetworkLink(),
+			Priority: 900,
 			Allowed: []*compute.FirewallAllowed{
 				{
 					IPProtocol: "TCP",
@@ -220,12 +222,14 @@ func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 				fmt.Sprintf("%s-control-plane", s.Name()),
 			},
 		},
+		// Control plane <-> workload cluster
 		{
-			Name:    fmt.Sprintf("allow-%s-cluster", s.Name()),
-			Network: s.NetworkLink(),
+			Name:     fmt.Sprintf("%s-allow-internal", s.Name()),
+			Network:  s.NetworkLink(),
+			Priority: 901,
 			Allowed: []*compute.FirewallAllowed{
 				{
-					IPProtocol: "all",
+					IPProtocol: "tcp:0-65535,udp:0-65535,icmp",
 				},
 			},
 			Direction: "INGRESS",
@@ -237,6 +241,32 @@ func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 				fmt.Sprintf("%s-control-plane", s.Name()),
 				fmt.Sprintf("%s-node", s.Name()),
 			},
+		},
+		// ICMP
+		// If default name is used this should be preconfigured and will no-op.
+		{
+			Name:     fmt.Sprintf("%s-allow-icmp", s.Name()),
+			Network:  s.NetworkLink(),
+			Priority: 65534,
+			Allowed: []*compute.FirewallAllowed{
+				{
+					IPProtocol: "icmp",
+				},
+			},
+			Direction: "INGRESS",
+		},
+		// SSH
+		// If default name is used this should be preconfigured and will no-op.
+		{
+			Name:     fmt.Sprintf("%s-allow-ssh", s.Name()),
+			Network:  s.NetworkLink(),
+			Priority: 65534,
+			Allowed: []*compute.FirewallAllowed{
+				{
+					IPProtocol: "tcp:22",
+				},
+			},
+			Direction: "INGRESS",
 		},
 	}
 
